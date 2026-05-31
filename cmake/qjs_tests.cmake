@@ -13,7 +13,7 @@ if(NOT TARGET GTest::gtest_main)
 endif()
 
 enable_testing()
-add_executable(qjs_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/js_engine_test.cc")
+add_executable(qjs_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/engine_test.cc")
 target_link_libraries(qjs_tests PRIVATE GTest::gtest_main qjs::qjs)
 
 include(GoogleTest)

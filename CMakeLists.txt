@@ -12,7 +12,23 @@ include(qjs_quickjs)
 
 # Target: C++ wrapper (static), name `qjs`, alias `qjs::qjs`
 add_library(qjs STATIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/js_engine.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/engine/engine.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/engine/context.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/vm.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/error.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/module/installer.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/module/loader.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/module/module_api.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/promise/promise.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/promise/bridge.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/binding/value.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/binding/value_impl.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/binding/call_context.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/binding/object_builder.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/binding/js_conv.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/binding/module_binding.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/binding/native_function_class.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/resolver/file_resolver.cc"
 )
 
 target_include_directories(qjs PUBLIC
