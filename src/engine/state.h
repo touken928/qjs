@@ -8,8 +8,12 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace qjs {
+namespace detail {
+struct FuncHolder;
+}
 
 class Engine;
 
@@ -30,6 +34,9 @@ struct EngineState {
     IModuleResolver& activeResolver() {
         return resolver ? *resolver : defaultResolver;
     }
+
+    /** Keeps native function bindings alive for JS objects (e.g. canvas 2d context). */
+    std::vector<std::unique_ptr<detail::FuncHolder>> persistent_holders;
 };
 
 } // namespace qjs

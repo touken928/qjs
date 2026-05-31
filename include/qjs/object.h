@@ -1,5 +1,6 @@
 #pragma once
 
+#include <qjs/call.h>
 #include <qjs/value.h>
 
 #include <cstdint>
@@ -26,6 +27,7 @@ public:
     ObjectBuilder& setInt64(std::string_view name, int64_t value);
     ObjectBuilder& setDouble(std::string_view name, double value);
     ObjectBuilder& setBool(std::string_view name, bool value);
+    ObjectBuilder& funcDynamic(std::string_view name, int min_argc, int max_argc, NativeDynamicFunction fn);
 
     Value build();
 

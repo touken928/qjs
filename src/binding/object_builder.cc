@@ -2,6 +2,10 @@
 #include <qjs/engine.h>
 
 #include "../engine/engine_access.h"
+#include "../engine/state.h"
+#include "../module/installer.h"
+#include "module_binding.h"
+#include "native_function_class.h"
 #include "value_bridge.h"
 
 #include <quickjs.h>
@@ -13,6 +17,7 @@ struct ObjectBuilder::Impl {
     JSContext* ctx = nullptr;
     JSValue obj = JS_UNDEFINED;
     bool built = false;
+    std::vector<std::unique_ptr<detail::FuncHolder>> funcs;
 };
 
 struct ArrayBuilder::Impl {
@@ -88,11 +93,37 @@ ObjectBuilder& ObjectBuilder::setBool(std::string_view name, bool value) {
     return *this;
 }
 
+ObjectBuilder& ObjectBuilder::funcDynamic(std::string_view name, int min_argc, int max_argc, NativeDynamicFunction fn) {
+    if (!impl_ || impl_->built || !impl_->engine) {
+        return *this;
+    }
+    auto wrap =
+        std::make_unique<detail::DynamicFuncWrap>(min_argc, max_argc, std::move(fn));
+    detail::FuncHolder* holder = wrap.get();
+    impl_->funcs.push_back(std::move(wrap));
+
+    JSValue funcData = JS_NewObjectClass(impl_->ctx, funcClassId());
+    JS_SetOpaque(funcData, holder);
+    JSValue jfn = JS_NewCFunctionData(impl_->ctx, ModuleInstaller::callFuncTrampoline, 0, 0, 1, &funcData);
+    JS_FreeValue(impl_->ctx, funcData);
+    JS_SetPropertyStr(impl_->ctx, impl_->obj, std::string(name).c_str(), jfn);
+    return *this;
+}
+
 Value ObjectBuilder::build() {
     if (!impl_ || impl_->built) {
         return {};
     }
     impl_->built = true;
+    if (impl_->engine) {
+        auto* state = static_cast<EngineState*>(JS_GetContextOpaque(impl_->ctx));
+        if (state) {
+            for (auto& f : impl_->funcs) {
+                state->persistent_holders.push_back(std::move(f));
+            }
+            impl_->funcs.clear();
+        }
+    }
     return detail::makeValue(impl_->ctx, impl_->obj);
 }
 

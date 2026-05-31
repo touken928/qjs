@@ -37,7 +37,7 @@ private:
 
 } // namespace
 
-JSValue ModuleInstaller::callFunc(JSContext* c, JSValue /*thisVal*/, int argc, JSValue* argv, int /*magic*/, JSValue* data) {
+JSValue ModuleInstaller::callFuncTrampoline(JSContext* c, JSValue /*thisVal*/, int argc, JSValue* argv, int /*magic*/, JSValue* data) {
     auto* holder = static_cast<detail::FuncHolder*>(JS_GetOpaque(data[0], funcClassId()));
     detail::FuncBase* wrapper = static_cast<detail::FuncBase*>(holder);
     if (!wrapper) {
@@ -49,7 +49,7 @@ JSValue ModuleInstaller::callFunc(JSContext* c, JSValue /*thisVal*/, int argc, J
 JSValue ModuleInstaller::createJSFunction(detail::FuncHolder* wrapper) {
     JSValue funcData = JS_NewObjectClass(ctx_, funcClassId());
     JS_SetOpaque(funcData, wrapper);
-    JSValue fn = JS_NewCFunctionData(ctx_, &ModuleInstaller::callFunc, 0, 0, 1, &funcData);
+    JSValue fn = JS_NewCFunctionData(ctx_, &ModuleInstaller::callFuncTrampoline, 0, 0, 1, &funcData);
     JS_FreeValue(ctx_, funcData);
     return fn;
 }

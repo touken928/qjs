@@ -26,13 +26,13 @@ public:
     bool installModuleExports(JSContext* c, JSModuleDef* m, Module& mod);
     void registerModuleExportsToGlobal(JSValue moduleNS);
 
+    static JSValue callFuncTrampoline(JSContext* c, JSValue this_val, int argc, JSValue* argv, int magic, JSValue* data);
+
 private:
     bool installRecursive(JSContext* c, Module& mod, ExportSink& sink, bool strict);
 
     JSContext* ctx_ = nullptr;
     JSClassID funcClassId_ = 0;
-
-    static JSValue callFunc(JSContext* c, JSValue /*thisVal*/, int argc, JSValue* argv, int /*magic*/, JSValue* data);
 };
 
 } // namespace qjs
