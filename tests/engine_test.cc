@@ -132,6 +132,25 @@ TEST(JsEngine, NestedNativeModuleBinding) {
         "export {};\n")));
 }
 
+TEST(JsEngine, EngineInstallPlugin) {
+    struct DemoPlugin : qjs::IPlugin {
+        const char* name() const override { return "demo"; }
+        void install(qjs::Context&, qjs::Module& root) override {
+            root.module("demo").value("label", std::string("from_install"));
+        }
+    };
+
+    qjs::Engine engine;
+    engine.install<DemoPlugin>();
+
+    auto status = engine.evalModule("main.js", R"(
+import { label } from 'demo';
+if (label !== 'from_install') throw new Error('label');
+export {};
+)");
+    EXPECT_TRUE(status.success);
+}
+
 TEST(JsEngine, PluginRegistryInstallAll) {
     struct LabelPlugin : qjs::IPlugin {
         const char* name() const override { return "label_plugin"; }

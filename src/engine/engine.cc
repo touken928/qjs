@@ -40,6 +40,28 @@ void PluginRegistry::installAll(Context& ctx, Module& root) const {
     }
 }
 
+void PluginRegistry::installAll(Engine& engine) const {
+    installAll(engine.context(), engine.modules());
+}
+
+void Engine::installPlugin(IPlugin& plugin, PluginPtr owned) {
+    plugin.install(context(), modules());
+    if (owned) {
+        owned_plugins_.push_back(std::move(owned));
+    }
+}
+
+void Engine::install(PluginPtr plugin) {
+    if (!plugin) {
+        return;
+    }
+    installPlugin(*plugin, std::move(plugin));
+}
+
+void Engine::install(const PluginRegistry& registry) {
+    registry.installAll(*this);
+}
+
 Engine::Engine() : Engine(EngineOptions{}) {}
 
 Engine::Engine(EngineOptions options) : impl_(std::make_unique<Impl>()) {

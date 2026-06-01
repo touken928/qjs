@@ -9,6 +9,8 @@
 
 namespace qjs {
 
+class Engine;
+
 class IPlugin {
 public:
     virtual ~IPlugin() = default;
@@ -36,6 +38,9 @@ public:
     }
 
     void installAll(Context& ctx, Module& root) const;
+
+    /** Same as `installAll`, using `engine.context()` and `engine.modules()`. */
+    void installAll(Engine& engine) const;
 
 private:
     std::unordered_map<std::string, PluginPtr> plugins_;

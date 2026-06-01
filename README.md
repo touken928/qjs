@@ -82,9 +82,7 @@ struct DemoPlugin : qjs::IPlugin {
 
 int main() {
     qjs::Engine engine;
-    qjs::PluginRegistry plugins;
-    plugins.emplace<DemoPlugin>();
-    plugins.installAll(engine.context(), engine.modules());
+    engine.install<DemoPlugin>();
 
     auto status = engine.evalModule("main.js", R"(
 import { label } from 'demo';

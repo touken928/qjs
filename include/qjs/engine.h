@@ -80,15 +80,26 @@ public:
     bool isJobPending() const;
     void pumpMicrotasks();
 
+    /** Register a native module plugin (calls `IPlugin::install` immediately). */
+    template <typename PluginT, typename... Args>
+    PluginT& install(Args&&... args);
+
+    void install(PluginPtr plugin);
+
+    /** Register all plugins from a registry (registry must outlive this engine). */
+    void install(const PluginRegistry& registry);
+
 private:
     friend class Context;
     friend class ObjectBuilder;
     friend class ArrayBuilder;
     friend struct detail::EngineAccess;
 
+    void installPlugin(IPlugin& plugin, PluginPtr owned);
     void executePendingJobs();
     struct Impl;
     std::unique_ptr<Impl> impl_;
+    std::vector<PluginPtr> owned_plugins_;
 
     using TypeKey = const void*;
     template <typename T>
@@ -99,5 +110,13 @@ private:
     void setHostImpl(TypeKey key, void* ptr);
     void* hostImpl(TypeKey key) const;
 };
+
+template <typename PluginT, typename... Args>
+PluginT& Engine::install(Args&&... args) {
+    auto p = std::make_unique<PluginT>(std::forward<Args>(args)...);
+    PluginT& ref = *p;
+    installPlugin(ref, std::move(p));
+    return ref;
+}
 
 } // namespace qjs
