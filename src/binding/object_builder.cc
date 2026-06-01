@@ -1,10 +1,12 @@
 #include <qjs/object.h>
+#include <qjs/context.h>
 #include <qjs/engine.h>
 
 #include "../engine/engine_access.h"
 #include "../engine/state.h"
 #include "../module/installer.h"
 #include "module_binding.h"
+#include "module_func_bind.h"
 #include "native_function_class.h"
 #include "value_bridge.h"
 
@@ -35,6 +37,8 @@ ObjectBuilder::ObjectBuilder(Engine& engine)
     impl_->obj = JS_NewObject(impl_->ctx);
 }
 
+ObjectBuilder::ObjectBuilder(Context& ctx) : ObjectBuilder(ctx.engine()) {}
+
 ObjectBuilder::~ObjectBuilder() {
     if (impl_ && impl_->ctx && !impl_->built && !JS_IsUndefined(impl_->obj)) {
         JS_FreeValue(impl_->ctx, impl_->obj);
@@ -57,7 +61,7 @@ ObjectBuilder& ObjectBuilder::set(std::string_view name, Value value) {
     return *this;
 }
 
-ObjectBuilder& ObjectBuilder::setString(std::string_view name, std::string_view value) {
+ObjectBuilder& ObjectBuilder::setStringProperty(std::string_view name, std::string_view value) {
     if (!impl_ || impl_->built) {
         return *this;
     }
@@ -66,7 +70,7 @@ ObjectBuilder& ObjectBuilder::setString(std::string_view name, std::string_view 
     return *this;
 }
 
-ObjectBuilder& ObjectBuilder::setInt64(std::string_view name, int64_t value) {
+ObjectBuilder& ObjectBuilder::setInt64Property(std::string_view name, int64_t value) {
     if (!impl_ || impl_->built) {
         return *this;
     }
@@ -75,7 +79,7 @@ ObjectBuilder& ObjectBuilder::setInt64(std::string_view name, int64_t value) {
     return *this;
 }
 
-ObjectBuilder& ObjectBuilder::setDouble(std::string_view name, double value) {
+ObjectBuilder& ObjectBuilder::setDoubleProperty(std::string_view name, double value) {
     if (!impl_ || impl_->built) {
         return *this;
     }
@@ -84,7 +88,7 @@ ObjectBuilder& ObjectBuilder::setDouble(std::string_view name, double value) {
     return *this;
 }
 
-ObjectBuilder& ObjectBuilder::setBool(std::string_view name, bool value) {
+ObjectBuilder& ObjectBuilder::setBoolProperty(std::string_view name, bool value) {
     if (!impl_ || impl_->built) {
         return *this;
     }
@@ -93,22 +97,35 @@ ObjectBuilder& ObjectBuilder::setBool(std::string_view name, bool value) {
     return *this;
 }
 
-ObjectBuilder& ObjectBuilder::funcDynamic(std::string_view name, int min_argc, int max_argc, NativeDynamicFunction fn) {
-    if (!impl_ || impl_->built || !impl_->engine) {
-        return *this;
+#define QJS_OBJECT_BIND_FUNC(SIG, RET, ...)                                                                            \
+    ObjectBuilder& ObjectBuilder::func(std::string_view name, std::function<SIG> f) {                                  \
+        if (!impl_ || impl_->built || !impl_->engine) {                                                                \
+            return *this;                                                                                              \
+        }                                                                                                              \
+        auto wrap = detail::makeFuncHolder<RET, ##__VA_ARGS__>(std::move(f));                                         \
+        detail::FuncHolder* holder = wrap.get();                                                                       \
+        impl_->funcs.push_back(std::move(wrap));                                                                       \
+        JSValue funcData = JS_NewObjectClass(impl_->ctx, funcClassId());                                             \
+        JS_SetOpaque(funcData, holder);                                                                                \
+        JSValue jfn = JS_NewCFunctionData(impl_->ctx, ModuleInstaller::callFuncTrampoline, 0, 0, 1, &funcData);       \
+        JS_FreeValue(impl_->ctx, funcData);                                                                            \
+        JS_SetPropertyStr(impl_->ctx, impl_->obj, std::string(name).c_str(), jfn);                                   \
+        return *this;                                                                                                  \
     }
-    auto wrap =
-        std::make_unique<detail::DynamicFuncWrap>(min_argc, max_argc, std::move(fn));
-    detail::FuncHolder* holder = wrap.get();
-    impl_->funcs.push_back(std::move(wrap));
 
-    JSValue funcData = JS_NewObjectClass(impl_->ctx, funcClassId());
-    JS_SetOpaque(funcData, holder);
-    JSValue jfn = JS_NewCFunctionData(impl_->ctx, ModuleInstaller::callFuncTrampoline, 0, 0, 1, &funcData);
-    JS_FreeValue(impl_->ctx, funcData);
-    JS_SetPropertyStr(impl_->ctx, impl_->obj, std::string(name).c_str(), jfn);
-    return *this;
-}
+QJS_OBJECT_BIND_FUNC(void(), void)
+QJS_OBJECT_BIND_FUNC(void(double), void, double)
+QJS_OBJECT_BIND_FUNC(void(double, double), void, double, double)
+QJS_OBJECT_BIND_FUNC(void(double, double, double, double), void, double, double, double, double)
+QJS_OBJECT_BIND_FUNC(void(std::string), void, std::string)
+QJS_OBJECT_BIND_FUNC(void(std::string, double, double), void, std::string, double, double)
+QJS_OBJECT_BIND_FUNC(void(Value), void, Value)
+QJS_OBJECT_BIND_FUNC(double(), double)
+QJS_OBJECT_BIND_FUNC(Value(), Value)
+QJS_OBJECT_BIND_FUNC(Value(std::string), Value, std::string)
+QJS_OBJECT_BIND_FUNC(Value(double), Value, double)
+
+#undef QJS_OBJECT_BIND_FUNC
 
 Value ObjectBuilder::build() {
     if (!impl_ || impl_->built) {
@@ -133,6 +150,8 @@ ArrayBuilder::ArrayBuilder(Engine& engine) : impl_(std::make_unique<Impl>()) {
     impl_->arr = JS_NewArray(impl_->ctx);
 }
 
+ArrayBuilder::ArrayBuilder(Context& ctx) : ArrayBuilder(ctx.engine()) {}
+
 ArrayBuilder::~ArrayBuilder() {
     if (impl_ && impl_->ctx && !impl_->built && !JS_IsUndefined(impl_->arr)) {
         JS_FreeValue(impl_->ctx, impl_->arr);
@@ -155,7 +174,7 @@ ArrayBuilder& ArrayBuilder::push(Value value) {
     return *this;
 }
 
-ArrayBuilder& ArrayBuilder::pushString(std::string_view value) {
+ArrayBuilder& ArrayBuilder::pushStringElement(std::string_view value) {
     if (!impl_ || impl_->built) {
         return *this;
     }
@@ -164,7 +183,7 @@ ArrayBuilder& ArrayBuilder::pushString(std::string_view value) {
     return *this;
 }
 
-ArrayBuilder& ArrayBuilder::pushInt64(int64_t value) {
+ArrayBuilder& ArrayBuilder::pushInt64Element(int64_t value) {
     if (!impl_ || impl_->built) {
         return *this;
     }
@@ -173,7 +192,7 @@ ArrayBuilder& ArrayBuilder::pushInt64(int64_t value) {
     return *this;
 }
 
-ArrayBuilder& ArrayBuilder::pushDouble(double value) {
+ArrayBuilder& ArrayBuilder::pushDoubleElement(double value) {
     if (!impl_ || impl_->built) {
         return *this;
     }
@@ -182,7 +201,7 @@ ArrayBuilder& ArrayBuilder::pushDouble(double value) {
     return *this;
 }
 
-ArrayBuilder& ArrayBuilder::pushBool(bool value) {
+ArrayBuilder& ArrayBuilder::pushBoolElement(bool value) {
     if (!impl_ || impl_->built) {
         return *this;
     }

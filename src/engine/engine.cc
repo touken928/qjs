@@ -172,6 +172,12 @@ Value Engine::undefined() {
     return detail::makeValue(detail::engineJsContext(*this), JS_UNDEFINED);
 }
 
+Value Engine::throwTypeError(std::string_view message) {
+    JSContext* c = detail::engineJsContext(*this);
+    JSValue ex = JS_ThrowTypeError(c, "%.*s", static_cast<int>(message.size()), message.data());
+    return detail::makeValue(c, ex);
+}
+
 Value Engine::nullValue() {
     return detail::makeValue(detail::engineJsContext(*this), JS_NULL);
 }

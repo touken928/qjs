@@ -4,7 +4,9 @@
 
 namespace qjs {
 
+class ArrayBuilder;
 class Engine;
+class ObjectBuilder;
 
 /** Non-owning view of the active JS context and module tree. */
 class Context {
@@ -17,6 +19,10 @@ public:
 
     Engine& engine() { return *engine_; }
     const Engine& engine() const { return *engine_; }
+
+    /** New plain object builder (same as `engine().object()`). */
+    ObjectBuilder object();
+    ArrayBuilder array();
 
 private:
     friend class Engine;

@@ -26,7 +26,7 @@ add_library(qjs STATIC
     "${CMAKE_CURRENT_SOURCE_DIR}/src/binding/call_context.cc"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/binding/object_builder.cc"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/binding/js_conv.cc"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/binding/module_binding.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/binding/module_func_bind.cc"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/binding/native_function_class.cc"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/resolver/file_resolver.cc"
 )

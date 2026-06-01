@@ -5,6 +5,7 @@
 #include <quickjs.h>
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -62,6 +63,12 @@ template <>
 struct JSConv<Value> {
     static Value from(JSContext* c, JSValue v, bool& ok);
     static JSValue to(JSContext* c, const Value& v);
+};
+
+template <typename T>
+struct JSConv<std::optional<T>> {
+    static std::optional<T> from(JSContext* c, JSValue v, bool& ok);
+    static JSValue to(JSContext* c, const std::optional<T>& v);
 };
 
 template <typename T>

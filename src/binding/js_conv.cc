@@ -186,4 +186,27 @@ Value valueFromNative(Engine& engine, const std::string& v) {
     return detail::makeValue(c, JS_NewString(c, v.c_str()));
 }
 
+template <typename T>
+std::optional<T> JSConv<std::optional<T>>::from(JSContext* c, JSValue v, bool& ok) {
+    if (JS_IsUndefined(v) || JS_IsNull(v)) {
+        ok = true;
+        return std::nullopt;
+    }
+    bool innerOk = false;
+    T inner = JSConv<T>::from(c, v, innerOk);
+    ok = innerOk;
+    return innerOk ? std::optional<T>(std::move(inner)) : std::nullopt;
+}
+
+template <typename T>
+JSValue JSConv<std::optional<T>>::to(JSContext* c, const std::optional<T>& v) {
+    if (!v) {
+        return JS_UNDEFINED;
+    }
+    return JSConv<T>::to(c, *v);
+}
+
+template struct JSConv<std::optional<std::string>>;
+template struct JSConv<std::optional<Value>>;
+
 } // namespace qjs

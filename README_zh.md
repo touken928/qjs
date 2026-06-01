@@ -21,8 +21,8 @@
 | `qjs/module.h` | `qjs::Module` — 原生模块绑定树 |
 | `qjs/plugin.h` | 插件注册 |
 | `qjs/value.h` | `qjs::Value` — 不透明 JS 值句柄 |
-| `qjs/call.h` | `qjs::CallContext` — 动态原生参数 |
-| `qjs/object.h` | `ObjectBuilder` / `ArrayBuilder` |
+| `qjs/call.h` | `qjs::CallContext` — 底层参数辅助（优先 typed `func`） |
+| `qjs/object.h` | `ObjectBuilder` / `ArrayBuilder` — `set` / `push`；`Context::object()` |
 | `qjs/promise.h` | `qjs::Promise` |
 | `qjs/result.h` | `qjs::Status` / `qjs::Result<T>` |
 | `qjs/resolver.h` | 模块解析器 |
@@ -48,10 +48,11 @@ target_link_libraries(myapp PRIVATE qjs::qjs)
 
 ## 示例
 
-在原生模块里注册 **常量**（`value`）、**类型化函数**（`func`）、**动态函数**（`funcDynamic`），以及用 `ObjectBuilder` 构造带方法的 **类式对象**（工厂函数 + 实例方法）。
+在原生模块里注册 **常量**（`value`）、**类型化函数**（`func`），以及用 `ObjectBuilder` 构造带方法的 **类式对象**。
+
+`func` 支持基础类型、`qjs::Value`、`std::vector<qjs::Value>`（可变参数，如 `console.log`）、以及尾部 `std::optional<…>`（如 `process.env(key?)`）。错误可用 `Engine::throwTypeError` 返回。
 
 ```cpp
-#include <qjs/call.h>
 #include <qjs/engine.h>
 #include <qjs/object.h>
 #include <qjs/plugin.h>
@@ -62,39 +63,19 @@ target_link_libraries(myapp PRIVATE qjs::qjs)
 struct DemoPlugin : qjs::IPlugin {
     const char* name() const override { return "demo"; }
 
-    void install(qjs::Context&, qjs::Module& root) override {
+        void install(qjs::Context& ctx, qjs::Module& root) override {
         qjs::Module& m = root.module("demo");
 
         m.value("VERSION", std::string("qjs"));
         m.func("twice", std::function<int(int)>([](int n) { return n * 2; }));
+        m.func("greet", [](std::string name) -> std::string { return "Hello, " + name; });
 
-        m.funcDynamic("greet", 1, 1, [](qjs::CallContext& ctx) -> qjs::Result<qjs::Value> {
-            auto name = ctx.stringArg(0);
-            if (!name.success) {
-                return qjs::Result<qjs::Value>::fail(name.error);
-            }
-            return qjs::Result<qjs::Value>::ok(ctx.engine().string("Hello, " + name.value));
-        });
-
-        m.funcDynamic("Point", 2, 2, [](qjs::CallContext& ctx) -> qjs::Result<qjs::Value> {
-            auto x = ctx.float64Arg(0);
-            auto y = ctx.float64Arg(1);
-            if (!x.success || !y.success) {
-                return qjs::Result<qjs::Value>::fail(
-                    qjs::ErrorInfo{"Point: expected (x, y) numbers", {}, {}});
-            }
-            const double px = x.value;
-            const double py = y.value;
-
-            qjs::ObjectBuilder obj(ctx.engine());
-            obj.setDouble("x", px);
-            obj.setDouble("y", py);
-            obj.funcDynamic("magnitude", 0, 0,
-                [px, py](qjs::CallContext& c) -> qjs::Result<qjs::Value> {
-                    const double mag = std::sqrt(px * px + py * py);
-                    return qjs::Result<qjs::Value>::ok(c.engine().float64(mag));
-                });
-            return qjs::Result<qjs::Value>::ok(obj.build());
+        m.func("Point", [&ctx](double px, double py) -> qjs::Value {
+            return ctx.object()
+                .set("x", px)
+                .set("y", py)
+                .func("magnitude", [px, py]() -> double { return std::sqrt(px * px + py * py); })
+                .build();
         });
     }
 };

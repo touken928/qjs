@@ -60,6 +60,8 @@ public:
     Value int64(int64_t value);
     Value float64(double value);
     Value boolValue(bool value);
+    /** Pending exception value (for native bindings that return `Value`). */
+    Value throwTypeError(std::string_view message);
     Value arrayBuffer(const uint8_t* data, size_t len);
     ObjectBuilder object();
     ArrayBuilder array();
