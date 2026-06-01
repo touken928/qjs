@@ -48,15 +48,79 @@ target_link_libraries(myapp PRIVATE qjs::qjs)
 
 ## 示例
 
+在原生模块里注册 **常量**（`value`）、**类型化函数**（`func`）、**动态函数**（`funcDynamic`），以及用 `ObjectBuilder` 构造带方法的 **类式对象**（工厂函数 + 实例方法）。
+
 ```cpp
+#include <qjs/call.h>
 #include <qjs/engine.h>
+#include <qjs/object.h>
+#include <qjs/plugin.h>
+
+#include <cmath>
+#include <string>
+
+struct DemoPlugin : qjs::IPlugin {
+    const char* name() const override { return "demo"; }
+
+    void install(qjs::Context&, qjs::Module& root) override {
+        qjs::Module& m = root.module("demo");
+
+        m.value("VERSION", std::string("qjs"));
+        m.func("twice", std::function<int(int)>([](int n) { return n * 2; }));
+
+        m.funcDynamic("greet", 1, 1, [](qjs::CallContext& ctx) -> qjs::Result<qjs::Value> {
+            auto name = ctx.stringArg(0);
+            if (!name.success) {
+                return qjs::Result<qjs::Value>::fail(name.error);
+            }
+            return qjs::Result<qjs::Value>::ok(ctx.engine().string("Hello, " + name.value));
+        });
+
+        m.funcDynamic("Point", 2, 2, [](qjs::CallContext& ctx) -> qjs::Result<qjs::Value> {
+            auto x = ctx.float64Arg(0);
+            auto y = ctx.float64Arg(1);
+            if (!x.success || !y.success) {
+                return qjs::Result<qjs::Value>::fail(
+                    qjs::ErrorInfo{"Point: expected (x, y) numbers", {}, {}});
+            }
+            const double px = x.value;
+            const double py = y.value;
+
+            qjs::ObjectBuilder obj(ctx.engine());
+            obj.setDouble("x", px);
+            obj.setDouble("y", py);
+            obj.funcDynamic("magnitude", 0, 0,
+                [px, py](qjs::CallContext& c) -> qjs::Result<qjs::Value> {
+                    const double mag = std::sqrt(px * px + py * py);
+                    return qjs::Result<qjs::Value>::ok(c.engine().float64(mag));
+                });
+            return qjs::Result<qjs::Value>::ok(obj.build());
+        });
+    }
+};
 
 int main() {
     qjs::Engine engine;
-    auto status = engine.evalModule("hello.js", "export {};\n");
+    engine.install<DemoPlugin>();
+
+    auto status = engine.evalModule("main.js", R"(
+import { VERSION, twice, greet, Point } from 'demo';
+
+if (VERSION !== 'qjs') throw new Error('VERSION');
+if (twice(21) !== 42) throw new Error('twice');
+if (greet('world') !== 'Hello, world') throw new Error('greet');
+
+const p = Point(3, 4);
+if (p.x !== 3 || p.y !== 4) throw new Error('fields');
+if (p.magnitude() !== 5) throw new Error('magnitude');
+
+export {};
+)");
     return status.success ? 0 : 1;
 }
 ```
+
+`install()` 会立刻把导出挂到模块树，并由 `Engine` 持有插件直到析构。也可不用插件，直接 `engine.modules().module("demo").func(...)` 绑定。
 
 ## 构建与测试
 

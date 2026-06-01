@@ -1,10 +1,13 @@
 #include <gtest/gtest.h>
 
+#include <qjs/call.h>
 #include <qjs/engine.h>
+#include <qjs/object.h>
 #include <qjs/plugin.h>
 #include <qjs/resolver.h>
 #include <qjs/value.h>
 
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <random>
@@ -130,6 +133,55 @@ TEST(JsEngine, NestedNativeModuleBinding) {
         "import * as o from 'outer';\n"
         "if (o.inner.id(7) !== 7) throw new Error('nested');\n"
         "export {};\n")));
+}
+
+TEST(JsEngine, DemoModuleFuncAndClassBindings) {
+    struct DemoPlugin : qjs::IPlugin {
+        const char* name() const override { return "demo"; }
+        void install(qjs::Context&, qjs::Module& root) override {
+            qjs::Module& m = root.module("demo");
+            m.value("VERSION", std::string("qjs"));
+            m.func("twice", std::function<int(int)>([](int n) { return n * 2; }));
+            m.funcDynamic("greet", 1, 1, [](qjs::CallContext& ctx) -> qjs::Result<qjs::Value> {
+                auto name = ctx.stringArg(0);
+                if (!name.success) {
+                    return qjs::Result<qjs::Value>::fail(name.error);
+                }
+                return qjs::Result<qjs::Value>::ok(ctx.engine().string("Hello, " + name.value));
+            });
+            m.funcDynamic("Point", 2, 2, [](qjs::CallContext& ctx) -> qjs::Result<qjs::Value> {
+                auto x = ctx.float64Arg(0);
+                auto y = ctx.float64Arg(1);
+                if (!x.success || !y.success) {
+                    return qjs::Result<qjs::Value>::fail(qjs::ErrorInfo{"Point", {}, {}});
+                }
+                const double px = x.value;
+                const double py = y.value;
+                qjs::ObjectBuilder obj(ctx.engine());
+                obj.setDouble("x", px);
+                obj.setDouble("y", py);
+                obj.funcDynamic("magnitude", 0, 0,
+                    [px, py](qjs::CallContext& c) -> qjs::Result<qjs::Value> {
+                        return qjs::Result<qjs::Value>::ok(c.engine().float64(std::sqrt(px * px + py * py)));
+                    });
+                return qjs::Result<qjs::Value>::ok(obj.build());
+            });
+        }
+    };
+
+    qjs::Engine engine;
+    engine.install<DemoPlugin>();
+    EXPECT_TRUE(status_ok(engine.evalModule(
+        "main.js",
+        R"(
+import { VERSION, twice, greet, Point } from 'demo';
+if (VERSION !== 'qjs') throw new Error('VERSION');
+if (twice(21) !== 42) throw new Error('twice');
+if (greet('world') !== 'Hello, world') throw new Error('greet');
+const p = Point(3, 4);
+if (p.magnitude() !== 5) throw new Error('magnitude');
+export {};
+)")));
 }
 
 TEST(JsEngine, EngineInstallPlugin) {

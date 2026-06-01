@@ -69,14 +69,59 @@ Linking **`qjs::qjs`** adds `include/` so you use `#include <qjs/...>`.
 
 ## Example
 
+Register a native module with **values**, **typed functions** (`func`), **dynamic functions** (`funcDynamic`), and a **class-like** factory that returns an object with methods (`ObjectBuilder` + `funcDynamic`).
+
 ```cpp
+#include <qjs/call.h>
 #include <qjs/engine.h>
+#include <qjs/object.h>
 #include <qjs/plugin.h>
+
+#include <cmath>
+#include <string>
 
 struct DemoPlugin : qjs::IPlugin {
     const char* name() const override { return "demo"; }
+
     void install(qjs::Context&, qjs::Module& root) override {
-        root.module("demo").value("label", std::string("qjs"));
+        qjs::Module& m = root.module("demo");
+
+        // export const VERSION = 'qjs'
+        m.value("VERSION", std::string("qjs"));
+
+        // export function twice(n) { return n * 2; }
+        m.func("twice", std::function<int(int)>([](int n) { return n * 2; }));
+
+        // export function greet(name) { return `Hello, ${name}`; }
+        m.funcDynamic("greet", 1, 1, [](qjs::CallContext& ctx) -> qjs::Result<qjs::Value> {
+            auto name = ctx.stringArg(0);
+            if (!name.success) {
+                return qjs::Result<qjs::Value>::fail(name.error);
+            }
+            return qjs::Result<qjs::Value>::ok(ctx.engine().string("Hello, " + name.value));
+        });
+
+        // export function Point(x, y) { return { x, y, magnitude() { ... } }; }
+        m.funcDynamic("Point", 2, 2, [](qjs::CallContext& ctx) -> qjs::Result<qjs::Value> {
+            auto x = ctx.float64Arg(0);
+            auto y = ctx.float64Arg(1);
+            if (!x.success || !y.success) {
+                return qjs::Result<qjs::Value>::fail(
+                    qjs::ErrorInfo{"Point: expected (x, y) numbers", {}, {}});
+            }
+            const double px = x.value;
+            const double py = y.value;
+
+            qjs::ObjectBuilder obj(ctx.engine());
+            obj.setDouble("x", px);
+            obj.setDouble("y", py);
+            obj.funcDynamic("magnitude", 0, 0,
+                [px, py](qjs::CallContext& c) -> qjs::Result<qjs::Value> {
+                    const double mag = std::sqrt(px * px + py * py);
+                    return qjs::Result<qjs::Value>::ok(c.engine().float64(mag));
+                });
+            return qjs::Result<qjs::Value>::ok(obj.build());
+        });
     }
 };
 
@@ -85,15 +130,23 @@ int main() {
     engine.install<DemoPlugin>();
 
     auto status = engine.evalModule("main.js", R"(
-import { label } from 'demo';
-if (label !== 'qjs') throw new Error('label');
+import { VERSION, twice, greet, Point } from 'demo';
+
+if (VERSION !== 'qjs') throw new Error('VERSION');
+if (twice(21) !== 42) throw new Error('twice');
+if (greet('world') !== 'Hello, world') throw new Error('greet');
+
+const p = Point(3, 4);
+if (p.x !== 3 || p.y !== 4) throw new Error('fields');
+if (p.magnitude() !== 5) throw new Error('magnitude');
+
 export {};
 )");
     return status.success ? 0 : 1;
 }
 ```
 
-`install()` registers the plugin on the engine module tree immediately and keeps the `IPlugin` instance alive until the `Engine` is destroyed.
+`install()` binds exports on the engine module tree immediately and keeps the `IPlugin` alive until the `Engine` is destroyed. You can also call `engine.modules().module("demo").func(...)` directly without a plugin.
 
 ## Build & tests
 
