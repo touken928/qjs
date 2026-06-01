@@ -34,16 +34,6 @@ struct Engine::Impl {
     Context context{nullptr, nullptr};
 };
 
-void PluginRegistry::installAll(Context& ctx, Module& root) const {
-    for (auto& [_, plugin] : plugins_) {
-        plugin->install(ctx, root);
-    }
-}
-
-void PluginRegistry::installAll(Engine& engine) const {
-    installAll(engine.context(), engine.modules());
-}
-
 void Engine::installPlugin(IPlugin& plugin, PluginPtr owned) {
     plugin.install(context(), modules());
     if (owned) {
@@ -56,10 +46,6 @@ void Engine::install(PluginPtr plugin) {
         return;
     }
     installPlugin(*plugin, std::move(plugin));
-}
-
-void Engine::install(const PluginRegistry& registry) {
-    registry.installAll(*this);
 }
 
 Engine::Engine() : Engine(EngineOptions{}) {}

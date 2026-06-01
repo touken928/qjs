@@ -1,7 +1,7 @@
 <h1 align="center">qjs</h1>
 
 <p align="center">
-  <strong>基于 <a href="https://github.com/bellard/quickjs">QuickJS</a> 的轻量 C++17 封装：<code>qjs::Engine</code>、模块树、ES 模块与字节码、<code>qjs::PluginRegistry</code> — 公开头文件在 <code>include/qjs/</code>。</strong>
+  <strong>基于 <a href="https://github.com/bellard/quickjs">QuickJS</a> 的轻量 C++17 封装：<code>qjs::Engine</code>、模块树、ES 模块与字节码、<code>engine.install&lt;Plugin&gt;()</code> — 公开头文件在 <code>include/qjs/</code>。</strong>
 </p>
 
 <p align="center">

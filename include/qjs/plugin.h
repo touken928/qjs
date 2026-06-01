@@ -4,12 +4,8 @@
 #include <qjs/module.h>
 
 #include <memory>
-#include <string>
-#include <unordered_map>
 
 namespace qjs {
-
-class Engine;
 
 class IPlugin {
 public:
@@ -19,31 +15,5 @@ public:
 };
 
 using PluginPtr = std::unique_ptr<IPlugin>;
-
-class PluginRegistry {
-public:
-    void add(PluginPtr plugin) {
-        if (!plugin) {
-            return;
-        }
-        plugins_.emplace(plugin->name(), std::move(plugin));
-    }
-
-    template <typename PluginT, typename... Args>
-    PluginT& emplace(Args&&... args) {
-        auto p = std::make_unique<PluginT>(std::forward<Args>(args)...);
-        PluginT& ref = *p;
-        add(std::move(p));
-        return ref;
-    }
-
-    void installAll(Context& ctx, Module& root) const;
-
-    /** Same as `installAll`, using `engine.context()` and `engine.modules()`. */
-    void installAll(Engine& engine) const;
-
-private:
-    std::unordered_map<std::string, PluginPtr> plugins_;
-};
 
 } // namespace qjs

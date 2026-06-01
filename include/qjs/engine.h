@@ -86,9 +86,6 @@ public:
 
     void install(PluginPtr plugin);
 
-    /** Register all plugins from a registry (registry must outlive this engine). */
-    void install(const PluginRegistry& registry);
-
 private:
     friend class Context;
     friend class ObjectBuilder;

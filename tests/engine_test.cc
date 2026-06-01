@@ -151,26 +151,6 @@ export {};
     EXPECT_TRUE(status.success);
 }
 
-TEST(JsEngine, PluginRegistryInstallAll) {
-    struct LabelPlugin : qjs::IPlugin {
-        const char* name() const override { return "label_plugin"; }
-        void install(qjs::Context&, qjs::Module& root) override {
-            root.module("labels").value("ID", 99);
-        }
-    };
-
-    qjs::PluginRegistry reg;
-    reg.emplace<LabelPlugin>();
-
-    qjs::Engine engine;
-    reg.installAll(engine.context(), engine.modules());
-    EXPECT_TRUE(status_ok(engine.evalModule(
-        "p.js",
-        "import { ID } from 'labels';\n"
-        "if (ID !== 99) throw new Error('ID');\n"
-        "export {};\n")));
-}
-
 TEST(JsEngine, EvalSyntaxErrorInvokesCallback) {
     qjs::Engine engine;
     std::string captured;

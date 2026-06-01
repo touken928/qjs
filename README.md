@@ -1,7 +1,7 @@
 <h1 align="center">qjs</h1>
 
 <p align="center">
-  <strong>Lightweight C++17 bindings for <a href="https://github.com/bellard/quickjs">QuickJS</a>: <code>qjs::Engine</code>, module tree, ES modules &amp; bytecode, and <code>qjs::PluginRegistry</code> — public headers under <code>include/qjs/</code>.</strong>
+  <strong>Lightweight C++17 bindings for <a href="https://github.com/bellard/quickjs">QuickJS</a>: <code>qjs::Engine</code>, module tree, ES modules &amp; bytecode, and <code>engine.install&lt;Plugin&gt;()</code> — public headers under <code>include/qjs/</code>.</strong>
 </p>
 
 <p align="center">
@@ -23,7 +23,7 @@
 | [`qjs/engine.h`](include/qjs/engine.h) | `qjs::Engine` — RAII runtime, eval, compile, promises |
 | [`qjs/context.h`](include/qjs/context.h) | `qjs::Context` — non-owning view of JS context + module tree |
 | [`qjs/module.h`](include/qjs/module.h) | `qjs::Module` — C++ native module binding tree |
-| [`qjs/plugin.h`](include/qjs/plugin.h) | `qjs::IPlugin`, `qjs::PluginRegistry` |
+| [`qjs/plugin.h`](include/qjs/plugin.h) | `qjs::IPlugin` |
 | [`qjs/value.h`](include/qjs/value.h) | `qjs::Value` — opaque JS value handle |
 | [`qjs/call.h`](include/qjs/call.h) | `qjs::CallContext` — dynamic native argument helpers |
 | [`qjs/object.h`](include/qjs/object.h) | `qjs::ObjectBuilder`, `qjs::ArrayBuilder` |
@@ -92,6 +92,8 @@ export {};
     return status.success ? 0 : 1;
 }
 ```
+
+`install()` registers the plugin on the engine module tree immediately and keeps the `IPlugin` instance alive until the `Engine` is destroyed.
 
 ## Build & tests
 
